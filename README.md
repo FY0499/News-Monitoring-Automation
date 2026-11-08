@@ -1,31 +1,27 @@
 # News Monitoring Automation
 
-An n8n workflow that periodically reads an RSS news feed, filters out previously recorded links, uses AI to classify and summarize new articles in Arabic, saves records to Google Sheets, and sends Telegram alerts.
+I built this n8n workflow to monitor an RSS news feed, detect new articles, and use AI to classify and summarize the news in Arabic before saving and sending updates.
 
 ## How it works
 
-1. A schedule trigger runs every three hours.
-2. The workflow fetches articles from an RSS feed and retrieves previously recorded news links from Google Sheets.
-3. JavaScript filters out articles that have already been stored.
-4. An AI agent classifies each new article and writes a short Arabic summary.
-5. The processed article information is saved to Google Sheets and sent through Telegram.
+1. The workflow checks an RSS feed every three hours.
+2. It retrieves the previously saved news links from Google Sheets.
+3. JavaScript filters out articles that have already been recorded.
+4. Claude summarizes each new article in Arabic and assigns it a suitable category.
+5. The news information is saved to Google Sheets and a Telegram message is sent with the article title, category, summary, and link.
+
+## Main features
+
+- Scheduled RSS news monitoring.
+- Duplicate article filtering.
+- AI-generated Arabic summaries.
+- Automatic news categorization.
+- Google Sheets storage and Telegram notifications.
 
 ## Technologies
 
-- n8n
-- RSS feeds
-- Google Sheets
-- Anthropic Claude
-- JavaScript
-- Telegram
+n8n, RSS Feed Read, Anthropic Claude, Google Sheets, JavaScript, and Telegram.
 
 ## Setup
 
-1. Import workflow.json into n8n.
-2. Configure Google Sheets, Anthropic, and Telegram credentials.
-3. Choose the RSS source and connect your own news log sheet.
-4. Test the workflow with a small batch before enabling the schedule.
-
-## Notes
-
-This repository contains the exported n8n workflow. Configure your own credentials and integrations in n8n before running it.
+Import [workflow.json](./workflow.json) into n8n, configure your Anthropic, Google Sheets, and Telegram credentials, then add your preferred RSS feed and connect your news tracking sheet.
