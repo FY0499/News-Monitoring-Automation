@@ -2,7 +2,7 @@
 
 I built this n8n workflow to monitor an RSS news feed, detect new articles, and use AI to classify and summarize the news in Arabic before saving and sending updates.
 
-<img width="762" height="216" alt="image" src="https://github.com/user-attachments/assets/2386670c-5bff-43bd-b4b5-ea763f1734f8" />
+<img width="762" height="216" alt="News Monitoring Automation workflow demo" src="https://github.com/user-attachments/assets/2386670c-5bff-43bd-b4b5-ea763f1734f8" />
 
 ## How it works
 
