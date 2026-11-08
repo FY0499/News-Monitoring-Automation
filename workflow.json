@@ -1,0 +1,352 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 3
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        80
+      ],
+      "id": "b875a18e-4ed9-4fc2-b48c-afee84b07e24",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "url": "https://www.aljazeera.net/aljazeerarss/a1e6b03c-d38f-4ba9-a720-33230b45a05b/669866e3-261f-4b06-acbe-0e26d0eefebf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        224,
+        80
+      ],
+      "id": "586cba6e-d3ae-4f73-8676-77878fef663a",
+      "name": "RSS Read"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1Fc6Ze0vq7D0MxoD6PxZ13JvAkFD_rUp5sFYef_jKPRk",
+          "mode": "list",
+          "cachedResultName": "news",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Fc6Ze0vq7D0MxoD6PxZ13JvAkFD_rUp5sFYef_jKPRk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "الورقة1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Fc6Ze0vq7D0MxoD6PxZ13JvAkFD_rUp5sFYef_jKPRk/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        448,
+        80
+      ],
+      "id": "0dad7175-581c-4c35-893a-d07257c12820",
+      "name": "Get row(s) in sheet",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "z8CNmElJqux4zhsn",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// نجيب كل أخبار RSS من العقدة الأصلية (بغض النظر عن اتصالها المباشر)\nconst rssItems = $('RSS Read').all();\n\n// مخرجات هذه العقدة = كل الصفوف المنشورة سابقاً من Google Sheets\nconst seenRows = $input.all();\n\nconst seenLinks = new Set(\n  seenRows\n    .map(row => row.json && row.json.link)\n    .filter(link => !!link)\n);\n\n// نُبقي فقط الأخبار التي رابطها غير موجود مسبقاً\nconst newItems = rssItems.filter(item => !seenLinks.has(item.json.link));\n\nreturn newItems;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        80
+      ],
+      "id": "43857f1a-765b-43df-8652-a0bb46fe4239",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=العنوان: {{ $json.title }}\n\nالمحتوى: {{ $json.content }}",
+        "options": {
+          "systemMessage": "أنت محرر أخبار محترف. لخص الخبر التالي بجملتين إلى ثلاث جمل بالعربية الفصحى، وحدد تصنيفاً مناسباً له (مثل: سياسة، اقتصاد، رياضة، ثقافة، تقنية، منوعات). أرجع ردّك بصيغة JSON صالحة فقط بدون أي نص إضافي أو علامات ```، وبالشكل التالي بالضبط:\n{\"category\": \"التصنيف\", \"summary\": \"الملخص\"}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        896,
+        80
+      ],
+      "id": "01fe35c6-f0af-41bd-bdac-7516d88669fb",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "jsCode": "// رد الـ AI Agent\nconst raw = $input.first().json.output || $input.first().json.text || '';\n\nlet parsed;\n\ntry {\n  const cleaned = raw\n    .replace(/```json/g, '')\n    .replace(/```/g, '')\n    .trim();\n\n  parsed = JSON.parse(cleaned);\n\n} catch (e) {\n  parsed = {\n    category: 'عام',\n    summary: raw.trim().slice(0, 300)\n  };\n}\n\n// نجيب الخبر الأصلي من الـ Node الموجودة قبل AI Agent\nconst original = $('Code in JavaScript').item.json;\n\nreturn [{\n  json: {\n    title: original.title || '',\n    link: original.link || '',\n    pubDate: original.pubDate || '',\n    category: parsed.category || 'عام',\n    summary: parsed.summary || '',\n    dateAdded: new Date().toISOString()\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1248,
+        80
+      ],
+      "id": "f3a73dfc-5462-4a73-a4e4-3a76e4ddff01",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "claude-sonnet-5",
+          "cachedResultName": "Claude Sonnet 5"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.6,
+      "position": [
+        968,
+        312
+      ],
+      "id": "92294bd1-0606-40d4-97a2-41bf46b7c59c",
+      "name": "Anthropic Chat Model",
+      "credentials": {
+        "anthropicApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1Fc6Ze0vq7D0MxoD6PxZ13JvAkFD_rUp5sFYef_jKPRk",
+          "mode": "list",
+          "cachedResultName": "news",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Fc6Ze0vq7D0MxoD6PxZ13JvAkFD_rUp5sFYef_jKPRk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "الورقة1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Fc6Ze0vq7D0MxoD6PxZ13JvAkFD_rUp5sFYef_jKPRk/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "title": "={{ $json.title }}",
+            "link": "={{ $('Code in JavaScript').item.json.link }}",
+            "content\r": "={{ $('Code in JavaScript').item.json.content }}",
+            "guid": "={{ $('Code in JavaScript').item.json.guid }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "link",
+              "displayName": "link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "content\r",
+              "displayName": "content\r",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "guid",
+              "displayName": "guid",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1472,
+        -16
+      ],
+      "id": "4ebde063-f567-4395-acc8-9ee83d91be21",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "z8CNmElJqux4zhsn",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "1120179307",
+        "text": "=📰 خبر جديد ({{ $json.category }})  \n{{ $json.title }} \n{{ $json.summary }}  \n🔗 {{ $json.link }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1472,
+        176
+      ],
+      "id": "7f646066-b377-4c80-9fcd-685a651296db",
+      "name": "Send a text message",
+      "webhookId": "759be17e-d284-4491-ba4a-9d188b9e5524",
+      "credentials": {
+        "telegramApi": {
+          "id": "61a0UZm9IJmhQsDP",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "RSS Read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Read": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "b8ea5a67-fc41-4fb4-93de-ef23793781de",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "bb766294e56f79392fb7c3f41bdf12f02742dc223fc678d2c034018401269105"
+  },
+  "nodeGroups": [],
+  "id": "bqgRoC1nafxIjXYg",
+  "tags": []
+}
